@@ -222,7 +222,7 @@ class GeoLocatorApp:
             pdf.cell(200, 10, txt=output, ln=True)
 
         # Save the PDF to a file
-        pdf_file_path = r"C:\Users\user\Desktop\python folder\File Downloads\geolocation_output.pdf"
+        pdf_file_path = r"C:\Users\user\Desktop\python folder\DEVASC\File Downloads\geolocation_output.pdf"
         pdf.output(pdf_file_path)
         messagebox.showinfo("Export to PDF", f"Output successfully exported to {pdf_file_path}")
 
