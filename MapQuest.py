@@ -9,7 +9,7 @@ class GeoLocatorApp:
     def __init__(self, root):
         self.root = root
         self.root.resizable(False, False)
-        self.root.title("Geolocation Finder")
+        self.root.title("TrailBlazer")
 
         self.bg_color = "#f0f0f0"  # Light grey background
         self.fg_color = "#333333"  # Dark grey for text
@@ -26,6 +26,11 @@ class GeoLocatorApp:
         self.markers = []  # List to hold the markers
 
     def create_widgets(self):
+
+        # Create a frame for better organization with a background color
+        border_frame = tk.Frame(self.root, bg="black", bd=2, relief="solid")  # Border frame
+        border_frame.grid(padx=10, pady=10)
+
         # Create a frame for better organization with a background color
         frame = tk.Frame(self.root, bg=self.bg_color)
         frame.grid(padx=10, pady=10)
@@ -55,36 +60,55 @@ class GeoLocatorApp:
         self.distance_unit_combobox.current(0)  # Default to Kilometers
 
         # Submit Button
-        submit_button = tk.Button(frame, text="Get Directions", command=self.get_directions, bg=self.button_color, fg=self.highlight_color)
-        submit_button.grid(row=4, column=0, pady=(10, 5), sticky='ew')
+        submit_button = tk.Button(frame, text="GET DIRECTIONS", command=self.get_directions, bg=self.button_color, fg=self.highlight_color)
+        submit_button.grid(row=4, column=1, pady=(10, 5), sticky="ew")
+
+        # Clear Button
+        clear_button = tk.Button(frame, text="CLEAR", command=self.clear_inputs, bg=self.button_color, fg=self.highlight_color)
+        clear_button.grid(row=5, column=1, pady=(10, 5), sticky="ew")
 
         # Export to PDF Button
-        export_button = tk.Button(frame, text="Export to PDF", command=self.export_to_pdf, bg=self.button_color, fg=self.highlight_color)
-        export_button.grid(row=4, column=1, pady=(10, 5), sticky='ew')
+        export_button = tk.Button(frame, text="EXPORT TO PDF", command=self.export_to_pdf, bg=self.button_color, fg=self.highlight_color)
+        export_button.grid(row=6, column=1, pady=(10, 5), sticky="ew")
 
         # Configure the grid columns to expand evenly
         frame.grid_columnconfigure(0, weight=1)
         frame.grid_columnconfigure(1, weight=1)
+        frame.grid_columnconfigure(2, weight=1)
 
         # Output Area for Instructions
-        self.output_area = ttk.Treeview(frame, columns=("Description", "Distance"), show='headings', height=15)
+        self.output_area = ttk.Treeview(frame, columns=("Description", "Distance"), show='headings', height=10)
         self.output_area.heading("Description", text="Description")
         self.output_area.heading("Distance", text="Distance")
         self.output_area.column("Description", width=400)  # Set width for Description column
         self.output_area.column("Distance", width=150)  # Set width for Distance column
-        self.output_area.grid(row=5, columnspan=2, pady=(10, 5), padx=(0, 20), sticky='ew')
+        self.output_area.grid(row=7, columnspan=2, pady=(10, 5), padx=(0, 20), sticky='ew')
 
         # Output Area for Distance and Trip Duration
-        tk.Label(frame, text="Distance & Duration:", bg=self.bg_color, fg=self.fg_color).grid(row=6, column=0, columnspan=2, pady=(10, 0))
-        self.distance_output_area = ttk.Treeview(frame, columns=("Output"), show='headings', height=10)
+        tk.Label(frame, text="Distance & Duration:", bg=self.bg_color, fg=self.fg_color).grid(row=8, column=0, columnspan=2, pady=(10, 0))
+        self.distance_output_area = ttk.Treeview(frame, columns=("Output"), show='headings', height=5)
         self.distance_output_area.heading("Output", text="Output")
         self.distance_output_area.column("Output", width=400)  # Set width for Output column
-        self.distance_output_area.grid(row=7, columnspan=2, pady=(10, 5), padx=(0, 20), sticky='ew')
+        self.distance_output_area.grid(row=9, columnspan=2, pady=(10, 5), padx=(0, 20), sticky='ew')
+
+    def clear_inputs(self):
+        """Clear all input fields and output areas."""
+        self.start_loc.delete(0, tk.END)
+        self.dest_loc.delete(0, tk.END)
+        self.vehicle_profile.set("car")  # Reset to default value
+        self.distance_unit.set("Kilometers")  # Reset to default value
+        
+        # Clear output areas
+        self.output_area.delete(*self.output_area.get_children())
+        self.distance_output_area.delete(*self.distance_output_area.get_children())
+
+        # Clear map markers if needed
+        self.clear_markers()
 
 
     def create_map(self):
         # Create the map
-        self.map = TkinterMapView(self.root, width=700, height=600)
+        self.map = TkinterMapView(self.root, width=700, height=600, highlightthickness=2, bd=5, bg="black")
         self.map.grid(row=0, column=2, rowspan=8, padx=(10, 12))  # Adjust position to be on the right side
         self.map.set_position(0, 0)  # Set initial map position to center
         self.map.set_zoom(2)  # Set initial zoom level
