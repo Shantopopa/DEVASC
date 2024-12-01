@@ -4,6 +4,7 @@ import requests
 import urllib.parse
 from tkintermapview import TkinterMapView
 from fpdf import FPDF
+from googletrans import Translator
 
 class GeoLocatorApp:
     def __init__(self, root):
@@ -15,7 +16,22 @@ class GeoLocatorApp:
         self.fg_color = "#333333"  # Dark grey for text
         self.button_color = "#4CAF50"  # Green for buttons
         self.highlight_color = "#ffffff"  # White for highlight
-        
+
+        frame = tk.Frame(self.root, bg=self.bg_color)
+        frame.grid(padx=10, pady=10)
+
+        self.translator = Translator()
+
+        # Language selection for translation
+        self.language_code_map = {
+            "English": "en",
+            "Spanish": "es",
+            "French": "fr",
+            "German": "de",
+            "Italian": "it",
+            "Portuguese": "pt"
+        }
+
         # API Key
         self.key = "9380c078-a7ca-4a9b-8f0b-45021d1f03e4"  # Replace with your Graphhopper API key
         self.route_url = "https://graphhopper.com/api/1/route?"
@@ -59,17 +75,25 @@ class GeoLocatorApp:
         self.distance_unit_combobox.grid(row=3, column=1, padx=(0, 20), pady=(5, 5), sticky='ew')
         self.distance_unit_combobox.current(0)  # Default to Kilometers
 
+        # Translation
+        tk.Label(frame, text="Translate to:", bg=self.bg_color, fg=self.fg_color).grid(row=4, column=0, sticky='e', padx=(0, 10), pady=(5, 5))
+        self.language_var = tk.StringVar(value="en")  # Default to English
+        languages = ["English", "Spanish", "French", "German", "Italian", "Portuguese"]  # Example languages
+        self.language_combobox = ttk.Combobox(frame, values=languages, width=28, textvariable=self.language_var)
+        self.language_combobox.grid(row=4, column=1, padx=(0, 20), pady=(5, 5), sticky='ew')
+        self.language_combobox.current(0)  # Default to English
+
         # Submit Button
         submit_button = tk.Button(frame, text="GET DIRECTIONS", command=self.get_directions, bg=self.button_color, fg=self.highlight_color)
-        submit_button.grid(row=4, column=1, pady=(10, 5), sticky="ew")
+        submit_button.grid(row=5, column=1, pady=(10, 5), sticky="ew")
 
         # Clear Button
         clear_button = tk.Button(frame, text="CLEAR", command=self.clear_inputs, bg=self.button_color, fg=self.highlight_color)
-        clear_button.grid(row=5, column=1, pady=(10, 5), sticky="ew")
+        clear_button.grid(row=6, column=1, pady=(10, 5), sticky="ew")
 
         # Export to PDF Button
         export_button = tk.Button(frame, text="EXPORT TO PDF", command=self.export_to_pdf, bg=self.button_color, fg=self.highlight_color)
-        export_button.grid(row=6, column=1, pady=(10, 5), sticky="ew")
+        export_button.grid(row=7, column=1, pady=(10, 5), sticky="ew")
 
         # Configure the grid columns to expand evenly
         frame.grid_columnconfigure(0, weight=1)
@@ -82,14 +106,14 @@ class GeoLocatorApp:
         self.output_area.heading("Distance", text="Distance")
         self.output_area.column("Description", width=400)  # Set width for Description column
         self.output_area.column("Distance", width=150)  # Set width for Distance column
-        self.output_area.grid(row=7, columnspan=2, pady=(10, 5), padx=(0, 20), sticky='ew')
+        self.output_area.grid(row=8, columnspan=2, pady=(10, 5), padx=(0, 20), sticky='ew')
 
         # Output Area for Distance and Trip Duration
-        tk.Label(frame, text="Distance & Duration:", bg=self.bg_color, fg=self.fg_color).grid(row=8, column=0, columnspan=2, pady=(10, 0))
+        tk.Label(frame, text="Distance & Duration:", bg=self.bg_color, fg=self.fg_color).grid(row=9, column=0, columnspan=2, pady=(10, 0))
         self.distance_output_area = ttk.Treeview(frame, columns=("Output"), show='headings', height=5)
         self.distance_output_area.heading("Output", text="Output")
         self.distance_output_area.column("Output", width=400)  # Set width for Output column
-        self.distance_output_area.grid(row=9, columnspan=2, pady=(10, 5), padx=(0, 20), sticky='ew')
+        self.distance_output_area.grid(row=10, columnspan=2, pady=(10, 5), padx=(0, 20), sticky='ew')
 
     def clear_inputs(self):
         """Clear all input fields and output areas."""
@@ -115,7 +139,14 @@ class GeoLocatorApp:
 
     def clear_markers(self):
         """Clear all markers from the map."""
+        for marker in self.markers:
+            marker.delete()  # Delete each marker from the map
         self.markers.clear()  # Clear the list of markers
+
+    def add_marker(self, lat, lng, label):
+        """Add a marker to the map."""
+        marker = self.map.set_marker(lat, lng, text=label)  # Add marker to map
+        self.markers.append(marker)  # Save the marker to the list
 
     def geocoding(self, location):
         geocode_url = "https://graphhopper.com/api/1/geocode?"
@@ -137,6 +168,11 @@ class GeoLocatorApp:
             return json_status, lat, lng, new_loc, value
         else:
             return json_status, None, None, location, None
+    
+    def translate_text(self, text):
+        """Translate the text to the selected language."""
+        translated = self.translator.translate(text, dest=self.language_var.get())
+        return translated.text
 
     def get_directions(self):
         start = self.start_loc.get()
@@ -147,68 +183,47 @@ class GeoLocatorApp:
         dest = self.geocoding(destination)
 
         if orig[0] == 200 and dest[0] == 200:
-            op = f"&point={orig[1]},{orig[2]}"
-            dp = f"&point={dest[1]},{dest[2]}"
-            paths_url = self.route_url + urllib.parse.urlencode({"key": self.key, "vehicle": vehicle}) + op + dp
-            
-            paths_status = requests.get(paths_url).status_code
+            # Fetch route and instructions
+            paths_url = self.route_url + urllib.parse.urlencode({"key": self.key, "vehicle": vehicle}) + f"&point={orig[1]},{orig[2]}" + f"&point={dest[1]},{dest[2]}"
             paths_data = requests.get(paths_url).json()
-            
-            if paths_status == 200 and "paths" in paths_data and len(paths_data["paths"]) > 0:
-                distance_m = paths_data["paths"][0]["distance"]
-                distance_km = distance_m / 1000
-                distance_miles = distance_km / 1.60934
-                distance_meters = distance_m  # already in meters
-                distance_feet = distance_m * 3.28084  # convert to feet
-                distance_nautical_miles = distance_m / 1852  # convert to nautical miles
-                distance_yards = distance_m * 1.09361  # convert to yards
-                
-                time_sec = int(paths_data["paths"][0]["time"] / 1000)
-                hr, min, sec = time_sec // 3600, (time_sec % 3600) // 60, time_sec % 60
 
-                # Clear previous entries
+            if paths_data["paths"]:
+                distance_km = paths_data["paths"][0]["distance"] / 1000
+                time_sec = int(paths_data["paths"][0]["time"] / 1000)
+                    
+                # Clear output areas
                 self.output_area.delete(*self.output_area.get_children())
                 self.distance_output_area.delete(*self.distance_output_area.get_children())
 
-                # Insert distance and duration in the distance output area
-                self.distance_output_area.insert('', 'end', values=(f"Driving Distance: {distance_km:.1f} km / {distance_miles:.1f} miles",))
-                self.distance_output_area.insert('', 'end', values=(f"Distance: {distance_meters:.1f} m / {distance_feet:.1f} ft",))
-                self.distance_output_area.insert('', 'end', values=(f"Nautical Distance: {distance_nautical_miles:.1f} nautical miles / {distance_yards:.1f} yards",))
-                self.distance_output_area.insert('', 'end', values=(f"Trip Duration: {hr:02d}:{min:02d}:{sec:02d}",))
-                
-                # Clear previous markers and display the new route
-                self.clear_markers()
-                self.map.set_position(orig[1], orig[2])  # Center map on starting location
-                
-                # Place markers using set_marker
-                start_marker = self.map.set_marker(orig[1], orig[2], text=f"Start: {orig[3]}")
-                self.markers.append(start_marker)
-                dest_marker = self.map.set_marker(dest[1], dest[2], text=f"Dest: {dest[3]}")
-                self.markers.append(dest_marker)
+                # Translate and add distance and duration output
+                distance_text = f"Driving Distance: {distance_km:.1f} km"
+                self.distance_output_area.insert('', 'end', values=(self.translate_text(distance_text),))
+                time_text = f"Trip Duration: {time_sec//3600:02d}:{(time_sec%3600)//60:02d}:{time_sec%60:02d}"
+                self.distance_output_area.insert('', 'end', values=(self.translate_text(time_text),))
 
-                # Handle route points
-                route_points = paths_data["paths"][0]["points"]
-                if isinstance(route_points, str):
-                    pass  # Handle encoded points if needed
-                else:
-                    route_coordinates = route_points.get("coordinates", [])
-                    for coord in route_coordinates:
-                        route_marker = self.map.set_marker(coord[1], coord[0])
-                        self.markers.append(route_marker)
-
-                # Show instructions on the output area
+                # Translate and display instructions
                 for instruction in paths_data["paths"][0]["instructions"]:
-                    path_desc = instruction["text"]
+                    path_desc = self.translate_text(instruction["text"])  # Translate instruction text
                     path_distance = instruction["distance"] / 1000  # Convert to kilometers
                     self.output_area.insert('', 'end', values=(path_desc, f"{path_distance:.1f} km"))  # Add distance next to instruction
-                
+                    
                 # Calculate average speed
                 average_speed_kmh = distance_km / (time_sec / 3600)
                 average_speed_mph = average_speed_kmh / 1.60934
                 self.output_area.insert('', 'end', values=(f"Average Speed: {average_speed_kmh:.1f} km/h / {average_speed_mph:.1f} mph",))
+
+                 # Add markers for the start and destination locations
+                self.add_marker(orig[1], orig[2], "Start")  # Add marker for starting location
+                self.add_marker(dest[1], dest[2], "Destination")  # Add marker for destination location
+
+                # Center the map on the midpoint between the origin and destination
+                mid_lat = (orig[1] + dest[1]) / 2  # Calculate midpoint latitude
+                mid_lng = (orig[2] + dest[2]) / 2  # Calculate midpoint longitude
+                self.map.set_position(mid_lat, mid_lng)  # Center map at midpoint
+                self.map.set_zoom(10)  # Adjust zoom level (change this as needed)    
                 
             else:
-                messagebox.showerror("Error", "No paths found. Please check your input locations.")
+                 messagebox.showerror("Error", "No paths found. Please check your input locations.")
         else:
             messagebox.showerror("Error", "Could not geocode the locations. Please check the input.")
 
