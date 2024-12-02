@@ -1,0 +1,31 @@
+name: Python CI
+
+on:
+  push:
+    branches:
+      - main # Trigger this workflow when pushing to the main branch
+  pull_request:
+    branches:
+      - main # Trigger when a PR is opened to the main branch
+
+jobs:
+  test:
+    runs-on: ubuntu-latest # Use the latest Ubuntu runner
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2 # Check out your code
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: "3.8" # Use your Python version
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt  # Install your project dependencies
+
+      - name: Run tests
+        run: |
+          python -m unittest discover tests  # Run your test suite (assuming tests are in a folder named 'tests')

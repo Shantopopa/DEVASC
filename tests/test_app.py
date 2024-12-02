@@ -1,5 +1,5 @@
 import pytest
-from app.main import geocoding  # Example of testing your geocoding function
+from MapQuest import geocoding  # Example of testing your geocoding function
 
 def test_geocoding_valid():
     # Test valid geocoding request
@@ -9,6 +9,6 @@ def test_geocoding_valid():
     assert lng is not None
 
 def test_geocoding_invalid():
-    # Test invalid geocoding request
+    # Test invalid geocoding requestc
     status, lat, lng, location, _ = geocoding("InvalidLocation123")
     assert status != 200
