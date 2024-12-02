@@ -12,13 +12,14 @@ class GeoLocatorApp:
         self.root.resizable(False, False)
         self.root.title("TrailBlazer")
 
-        self.bg_color = "#f0f0f0"  # Light grey background
-        self.fg_color = "#333333"  # Dark grey for text
-        self.button_color = "#4CAF50"  # Green for buttons
-        self.highlight_color = "#ffffff"  # White for highlight
+        self.bg_color = "#2C3E50"  # Light grey background
+        self.fg_color = "#ECF0F1"  # Dark grey for text
+        self.button_color = "#3498DB"  # Green for buttons
+        self.highlight_color = "#FFFFFF"  # White for highlight
+        self.entry_bg_color = "#34495E"  # Dark grey background for entry fields
 
         frame = tk.Frame(self.root, bg=self.bg_color)
-        frame.grid(padx=10, pady=10)
+        frame.grid(padx=20, pady=20)
 
         self.translator = Translator()
 
@@ -29,7 +30,23 @@ class GeoLocatorApp:
             "French": "fr",
             "German": "de",
             "Italian": "it",
-            "Portuguese": "pt"
+            "Portuguese": "pt",
+            "Japanese": "ja",
+            "Chinese (Simplified)": "zh-CN",
+            "Chinese (Traditional)": "zh-TW",
+            "Russian": "ru",
+            "Arabic": "ar",
+            "Hindi": "hi",
+            "Korean": "ko",
+            "Dutch": "nl",
+            "Swedish": "sv",
+            "Greek": "el",
+            "Turkish": "tr",
+            "Polish": "pl",
+            "Thai": "th",
+            "Vietnamese": "vi",
+            "Indonesian": "id",
+            "Hebrew": "he",
         }
 
         # API Key
@@ -42,8 +59,7 @@ class GeoLocatorApp:
         self.markers = []  # List to hold the markers
 
     def create_widgets(self):
-
-        # Create a frame for better organization with a background color
+         # Create a frame for better organization with a background color
         border_frame = tk.Frame(self.root, bg="black", bd=2, relief="solid")  # Border frame
         border_frame.grid(padx=10, pady=10)
 
@@ -53,12 +69,12 @@ class GeoLocatorApp:
 
         # Starting Location
         tk.Label(frame, text="Starting Location:", bg=self.bg_color, fg=self.fg_color).grid(row=0, column=0, sticky='e', padx=(0, 10), pady=(5, 5))
-        self.start_loc = tk.Entry(frame, width=30)
+        self.start_loc = tk.Entry(frame, width=30, bg=self.entry_bg_color, fg=self.fg_color)
         self.start_loc.grid(row=0, column=1, padx=(0, 20), pady=(5, 5), sticky='ew')
 
         # Destination Location
         tk.Label(frame, text="Destination Location:", bg=self.bg_color, fg=self.fg_color).grid(row=1, column=0, sticky='e', padx=(0, 10), pady=(5, 5))
-        self.dest_loc = tk.Entry(frame, width=30)
+        self.dest_loc = tk.Entry(frame, width=30, bg=self.entry_bg_color, fg=self.fg_color)
         self.dest_loc.grid(row=1, column=1, padx=(0, 20), pady=(5, 5), sticky='ew')
 
         # Vehicle Profile
@@ -78,7 +94,12 @@ class GeoLocatorApp:
         # Translation
         tk.Label(frame, text="Translate to:", bg=self.bg_color, fg=self.fg_color).grid(row=4, column=0, sticky='e', padx=(0, 10), pady=(5, 5))
         self.language_var = tk.StringVar(value="en")  # Default to English
-        languages = ["English", "Spanish", "French", "German", "Italian", "Portuguese"]  # Example languages
+        languages = [
+            "English", "Spanish", "French", "German", "Italian", "Portuguese",
+            "Japanese", "Chinese (Simplified)", "Chinese (Traditional)", "Russian",
+            "Arabic", "Hindi", "Korean", "Dutch", "Swedish", "Greek", "Turkish",
+            "Polish", "Thai", "Vietnamese", "Indonesian", "Hebrew"
+        ]  # Example languages
         self.language_combobox = ttk.Combobox(frame, values=languages, width=28, textvariable=self.language_var)
         self.language_combobox.grid(row=4, column=1, padx=(0, 20), pady=(5, 5), sticky='ew')
         self.language_combobox.current(0)  # Default to English
@@ -98,8 +119,7 @@ class GeoLocatorApp:
         # Configure the grid columns to expand evenly
         frame.grid_columnconfigure(0, weight=1)
         frame.grid_columnconfigure(1, weight=1)
-        frame.grid_columnconfigure(2, weight=1)
-
+        
         # Output Area for Instructions
         self.output_area = ttk.Treeview(frame, columns=("Description", "Distance"), show='headings', height=10)
         self.output_area.heading("Description", text="Description")
@@ -112,8 +132,13 @@ class GeoLocatorApp:
         tk.Label(frame, text="Distance & Duration:", bg=self.bg_color, fg=self.fg_color).grid(row=9, column=0, columnspan=2, pady=(10, 0))
         self.distance_output_area = ttk.Treeview(frame, columns=("Output"), show='headings', height=5)
         self.distance_output_area.heading("Output", text="Output")
-        self.distance_output_area.column("Output", width=400)  # Set width for Output column
+        self.distance_output_area.column("Output", width=400,)  # Set width for Output column
         self.distance_output_area.grid(row=10, columnspan=2, pady=(10, 5), padx=(0, 20), sticky='ew')
+
+        # Create loading label
+        self.loading_label = tk.Label(self.root, text="Loading...", bg=self.bg_color, fg=self.fg_color)
+        self.loading_label.grid(row=11, columnspan=2, pady=(10, 5), sticky='ew')
+        self.loading_label.grid_forget()  # Initially hide the loading label
 
     def clear_inputs(self):
         """Clear all input fields and output areas."""
@@ -128,6 +153,8 @@ class GeoLocatorApp:
 
         # Clear map markers if needed
         self.clear_markers()
+
+        self.language_var.set("English")
 
 
     def create_map(self):
@@ -175,12 +202,17 @@ class GeoLocatorApp:
         return translated.text
 
     def get_directions(self):
+        self.loading_label.grid() # Show loading indicator
+
         start = self.start_loc.get()
         destination = self.dest_loc.get()
         vehicle = self.vehicle_profile.get()
 
         orig = self.geocoding(start)
         dest = self.geocoding(destination)
+
+        # Hide the loading label once data is received
+        self.loading_label.grid_forget()
 
         if orig[0] == 200 and dest[0] == 200:
             # Fetch route and instructions
